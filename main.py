@@ -18,18 +18,23 @@ class Blog(db.Model):
         self.title = title_arg
         self.blog_post = blog_post_arg
 
-
+@app.route('/')
+def homepage():
+    return redirect('/blog')
+    
 @app.route('/blog', methods=['POST', 'GET'])
 def index():
-
-    
-    blog_list = Blog.query.all()
-    
-    return render_template('blogs.html',title="Build-a-blog!", blogs = blog_list)
+    if request.args.get('id') is not None:
+        id_value = int(request.args.get('id'))
+        singleblog = Blog.query.filter_by(id = id_value).one()
+        return render_template('singleblog.html',title="Build-a-blog",eachblog=singleblog)
+    else:
+        blog_list = Blog.query.all()
+        return render_template('blogs.html',title="Build-a-blog", blogs = blog_list)
 
 @app.route('/newpost')
 def new_post():
-    return render_template('newpost.html',title="Build-a-blog!")
+    return render_template('newpost.html',title="Build-a-blog")
 
 @app.route('/newpost',methods=['POST'])
 def submitform():
@@ -43,7 +48,7 @@ def submitform():
         new_blog = Blog(title_name_form,blog_post_form)
         db.session.add(new_blog)
         db.session.commit()
-        return redirect('/blog')
+        return redirect('/blog?id={0}'.format(new_blog.id))
     else:
         return render_template('newpost.html',title="Build-a-blog!",
             title_error=error_titlename,blog_error=error_blogpost,
