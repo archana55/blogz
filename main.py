@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template
+from flask import Flask, request, redirect, render_template,session,flash
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -6,6 +6,8 @@ app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://blogz:archana@localhost:8889/blogz'
 app.config['SQLALCHEMY_ECHO'] = True
 db = SQLAlchemy(app)
+app.secret_key = 'y337kGcys&zP3B'
+
 
 
 class Blog(db.Model):
@@ -31,6 +33,73 @@ class User(db.Model):
     def __init__(self, username, password):
         self.username = username
         self.password = password
+
+@app.route('/login',methods=['POST','GET'])
+def login():
+    error_msg = ""
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user and existing_user.password == password:
+            session['username'] = username
+            return redirect('/newpost')
+        elif existing_user and existing_user.password != password:
+            error_msg = "Password is incorrect"
+            flash(error_msg,'error')
+            return redirect('/login')
+        elif not existing_user:
+            error_msg = "Username does not exist."
+            flash(error_msg,'error')
+            return redirect('/login')
+
+    return render_template('login.html')
+
+
+@app.route('/signup',methods=['POST','GET'])
+def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        verifypwd = request.form['verify']
+        error = validate_signup(username,password,verifypwd)
+        existing_user = User.query.filter_by(username=username).first()
+        if not existing_user and not error:
+            new_user = User(username,password)
+            db.session.add(new_user)
+            db.session.commit()
+            session['username'] = username
+            return redirect('/newpost')
+        elif existing_user:
+            flash("Username already exists.","error")
+
+    return render_template('signup.html')
+
+
+def validate_signup(username,password,verifypwd):
+   
+    error_msg = ""
+    if not username.strip() or not password.strip() or not verifypwd.strip():    
+        error_msg = "one or more fields are blank."
+        flash(error_msg,'error')    
+    elif password != verifypwd:
+        error_msg = "Passwords do not match."
+        flash(error_msg,'error')
+    elif len(username)<3 :
+        error_msg = "Invalid username"
+        flash(error_msg,'error')
+    elif len(password)<3 :
+        error_msg = "Invalid password"
+        flash(error_msg,'error')
+    return error_msg
+
+
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    del session['username']
+    return redirect('/')
+
 
 @app.route('/')
 def homepage():
