@@ -34,6 +34,13 @@ class User(db.Model):
         self.username = username
         self.password = password
 
+@app.before_request
+def require_login():
+    allowed_routes = ['login', 'signup', 'bloglist', 'index']
+    if request.endpoint not in allowed_routes and 'username' not in session:
+        return redirect('/login')
+
+
 @app.route('/login',methods=['POST','GET'])
 def login():
     error_msg = ""
@@ -97,27 +104,35 @@ def validate_signup(username,password,verifypwd):
 
 @app.route('/logout', methods=['GET'])
 def logout():
-    del session['username']
-    return redirect('/')
+    if session.get('username') is not None:
+        del session['username']
+    return redirect('/blog')
 
 
 @app.route('/')
-def homepage():
-    return redirect('/blog')
+def index():
+    users = User.query.all()
+
+    return render_template('index.html', Users =users)
     
 @app.route('/blog', methods=['POST', 'GET'])
-def index():
+def bloglist():
     if request.args.get('id') is not None:
         id_value = int(request.args.get('id'))
-        singleblog = Blog.query.filter_by(id = id_value).one()
-        return render_template('singleblog.html',title="Build-a-blog",eachblog=singleblog)
+        singleblog = Blog.query.filter_by(id = id_value).first()
+        
+        return render_template('singleblog.html',title="Blogz",eachblog=singleblog)
+    elif request.args.get('user') is not None:
+        user_id = int(request.args.get('user'))
+        user_blog = Blog.query.filter_by(owner_id = user_id).all()
+        return render_template('singleUser.html',title="Blogz",blogs = user_blog)
     else:
         blog_list = Blog.query.all()
-        return render_template('blogs.html',title="Build-a-blog", blogs = blog_list)
+        return render_template('blogs.html',title="Blogz", blogs = blog_list)
 
 @app.route('/newpost')
 def new_post():
-    return render_template('newpost.html',title="Build-a-blog")
+    return render_template('newpost.html',title="Blogz")
 
 @app.route('/newpost',methods=['POST'])
 def submitform():
@@ -128,12 +143,14 @@ def submitform():
     error_blogpost = validateblogpost(blog_post_form)
 
     if len(error_titlename) == 0 and len(error_blogpost)== 0:
-        new_blog = Blog(title_name_form,blog_post_form)
+        current_user = User.query.filter_by(username = session['username']).one()
+        new_blog = Blog(title_name_form,blog_post_form,current_user)
+        
         db.session.add(new_blog)
         db.session.commit()
         return redirect('/blog?id={0}'.format(new_blog.id))
     else:
-        return render_template('newpost.html',title="Build-a-blog!",
+        return render_template('newpost.html',title="Blogz!",
             title_error=error_titlename,blog_error=error_blogpost,
             title_namefield=title_name_form,blog_postfield=blog_post_form)
 
@@ -153,19 +170,6 @@ def validateblogpost(blog_post_form):
     else:
         return ""
 
-
-
-
-#@app.route('/delete-task', methods=['POST'])
-#def delete_task():
-
-#    task_id = int(request.form['task-id'])
-#    task = Task.query.get(task_id)
-#   task.completed = True
-#  db.session.add(task)
-#   db.session.commit()
-
-#   return redirect('/')
 
 
 if __name__ == '__main__':

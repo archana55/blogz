@@ -1,15 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% if eachblog != None %}
     <h1>{{eachblog.title}}</h1>
     
     <hr />
         <ul>
             
             <p>{{eachblog.blog_post}}</p>
-        
+            <p>Written by <a href="/blog?user={{eachblog.owner_id}}" >{{eachblog.owner.username}}</a></p>
         </ul>
 
-    
+{% endif %}   
     
 {% endblock %}
